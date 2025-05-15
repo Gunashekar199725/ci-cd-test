@@ -12,9 +12,8 @@ pipeline {
                 sh '''
                     echo "[INFO] Setting up virtual environment..."
                     python3 -m venv ${VENV}
-                    . ${VENV}/bin/activate
-                    pip install --upgrade pip
-                    pip install flask
+                    ${VENV}/bin/pip install --upgrade pip
+                    ${VENV}/bin/pip install flask
                 '''
             }
         }
@@ -35,8 +34,7 @@ pipeline {
             steps {
                 sh '''
                     echo "[INFO] Starting Flask app on 0.0.0.0:${PORT}"
-                    . ${VENV}/bin/activate
-                    nohup python3 app.py > flask.log 2>&1 &
+                    ${VENV}/bin/python app.py > flask.log 2>&1 &
                     echo $! > flask.pid
                 '''
             }
@@ -47,7 +45,13 @@ pipeline {
                 sh '''
                     sleep 3
                     echo "[INFO] Testing app on localhost:${PORT}"
-                    curl -s http://localhost:${PORT} || echo "[WARN] App not responding yet"
+                    if curl -s http://localhost:${PORT}; then
+                        echo "[SUCCESS] App responded on port ${PORT}"
+                    else
+                        echo "[ERROR] App did not respond. Dumping log:"
+                        cat flask.log
+                        exit 1
+                    fi
                 '''
             }
         }
