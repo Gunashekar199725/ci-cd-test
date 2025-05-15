@@ -4,8 +4,7 @@ pipeline {
     environment {
         VENV_DIR = "venv"
         FLASK_APP = "app.py"
-        # Set your Flask app port here (make sure app.py uses the same port)
-        FLASK_PORT = "5000"
+        FLASK_PORT = "5000"  // Port number your Flask app will run on
     }
 
     stages {
@@ -26,7 +25,6 @@ pipeline {
         stage('Stop Existing Flask App') {
             steps {
                 sh '''
-                    # Find process running app.py and kill it
                     pid=$(pgrep -f "$FLASK_APP" || true)
                     if [ ! -z "$pid" ]; then
                         echo "Stopping existing Flask app with PID: $pid"
@@ -42,7 +40,6 @@ pipeline {
             steps {
                 sh '''
                     source $VENV_DIR/bin/activate
-                    # Run app.py in background binding to 0.0.0.0 so it's publicly accessible
                     nohup python $FLASK_APP > flask_app.log 2>&1 &
                     echo "Flask app started in background."
                 '''
