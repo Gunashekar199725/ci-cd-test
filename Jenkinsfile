@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    tools {
+      git 'Git' // Make sure this matches the name in Global Tool Configuration
+   }
+
     stages {
         stage('Clone Repo') {
             steps {
