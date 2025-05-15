@@ -11,7 +11,7 @@ pipeline {
         stage('Set Up Python') {
             steps {
                 sh '''
-                    apt install python3.12-venv
+                    sudo apt install python3.12-venv
                     python3 -m venv venv
                     . venv/bin/activate
                     pip install flask
