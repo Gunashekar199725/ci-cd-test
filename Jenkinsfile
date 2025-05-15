@@ -25,6 +25,7 @@ pipeline {
                     if [ -f flask.pid ]; then
                         kill -9 $(cat flask.pid) || true
                         rm flask.pid
+                        sleep 2
                     fi
                 '''
             }
@@ -34,8 +35,11 @@ pipeline {
             steps {
                 sh '''
                     echo "[INFO] Starting Flask app on 0.0.0.0:${PORT}"
-                    ${VENV}/bin/python3 app.py > flask.log 2>&1 &
+                    nohup ${VENV}/bin/python3 app.py > flask.log 2>&1 &
                     echo $! > flask.pid
+                    sleep 2
+                    echo "[INFO] Current running processes:"
+                    ps -ef | grep app.py | grep -v grep || echo "[WARN] Flask app process not found"
                 '''
             }
         }
