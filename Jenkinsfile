@@ -4,6 +4,7 @@ pipeline {
     environment {
         VENV = "venv"
         PORT = "5000"
+        WORKSPACE = "${env.WORKSPACE}"
     }
 
     stages {
@@ -34,11 +35,12 @@ pipeline {
         stage('Run Flask App in Background') {
             steps {
                 sh '''
-                    echo "[INFO] Starting Flask app on 0.0.0.0:${PORT}"
-                    nohup ${VENV}/bin/python3 app.py > flask.log 2>&1 &
+                    echo "[INFO] Starting Flask app on 0.0.0.0:${PORT} using setsid"
+                    # Use setsid to fully detach process
+                    setsid nohup ${VENV}/bin/python3 app.py > flask.log 2>&1 < /dev/null &
                     echo $! > flask.pid
-                    sleep 2
-                    echo "[INFO] Current running processes:"
+                    sleep 3
+                    echo "[INFO] Running processes:"
                     ps -ef | grep app.py | grep -v grep || echo "[WARN] Flask app process not found"
                 '''
             }
@@ -47,17 +49,31 @@ pipeline {
         stage('Verify Internal Access') {
             steps {
                 sh '''
-                    sleep 3
                     echo "[INFO] Testing app on localhost:${PORT}"
+                    sleep 3
                     if curl -s http://localhost:${PORT}; then
                         echo "[SUCCESS] App responded on port ${PORT}"
                     else
-                        echo "[ERROR] App did not respond. Dumping log:"
+                        echo "[ERROR] App did not respond. Dumping flask.log:"
                         cat flask.log
                         exit 1
                     fi
                 '''
             }
+        }
+    }
+
+    post {
+        always {
+            echo "[INFO] Build finished."
+            sh '''
+                echo "[INFO] Flask app process status after build:"
+                if [ -f flask.pid ]; then
+                    ps -p $(cat flask.pid) || echo "[WARN] Flask app process not running"
+                else
+                    echo "[WARN] No flask.pid file found"
+                fi
+            '''
         }
     }
 }
