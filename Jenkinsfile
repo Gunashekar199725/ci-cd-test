@@ -34,7 +34,7 @@ pipeline {
             steps {
                 sh '''
                     echo "[INFO] Starting Flask app on 0.0.0.0:${PORT}"
-                    ${VENV}/bin/python app.py > flask.log 2>&1 &
+                    ${VENV}/bin/python3 app.py > flask.log 2>&1 &
                     echo $! > flask.pid
                 '''
             }
