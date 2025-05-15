@@ -3,20 +3,22 @@ pipeline {
 
     environment {
         FLASK_APP = 'app.py'
-        FLASK_ENV = 'production'
+        VENV_DIR = 'venv'
     }
 
     stages {
         stage('Setup Python Environment') {
             steps {
                 script {
-                    // Install Python 3 and pip if not already installed
+                    // Install python3-venv package to create virtualenv
                     sh '''
                         sudo apt update
-                        sudo apt install -y python3 python3-pip
+                        sudo apt install -y python3-venv
+                        python3 -m venv $VENV_DIR
+                        source $VENV_DIR/bin/activate
+                        pip install --upgrade pip
+                        pip install flask
                     '''
-                    // Install Flask
-                    sh 'pip3 install flask'
                 }
             }
         }
@@ -24,7 +26,6 @@ pipeline {
         stage('Stop Existing Flask App') {
             steps {
                 script {
-                    // Stop any running Flask application on port 5000
                     sh '''
                         pid=$(lsof -t -i:5000)
                         if [ -n "$pid" ]; then
@@ -38,9 +39,10 @@ pipeline {
         stage('Run Flask App in Background') {
             steps {
                 script {
-                    // Run the Flask application in the background
+                    // Run Flask app using the virtual environment python interpreter
                     sh '''
-                        nohup python3 $FLASK_APP > flask_app.log 2>&1 &
+                        source $VENV_DIR/bin/activate
+                        nohup python $FLASK_APP > flask_app.log 2>&1 &
                     '''
                 }
             }
@@ -49,7 +51,6 @@ pipeline {
         stage('Verify Flask App') {
             steps {
                 script {
-                    // Check if the Flask application is running
                     sh '''
                         if ! pgrep -f $FLASK_APP > /dev/null; then
                             echo "Flask app failed to start"
@@ -65,7 +66,7 @@ pipeline {
 
     post {
         always {
-            // Clean up any background processes if needed
+            // Optionally clean up Flask app process on job finish
             sh 'pkill -f $FLASK_APP || true'
         }
     }
