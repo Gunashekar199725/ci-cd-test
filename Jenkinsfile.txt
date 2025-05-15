@@ -1,28 +1,57 @@
 pipeline {
     agent any
 
-    stages {
-        stage('Clone Repo') {
-            steps {
-                echo 'Cloning repo...'
-            }
-        }
+    environment {
+        VENV = "venv"
+        PORT = "5000"
+    }
 
-        stage('Set Up Python') {
+    stages {
+        stage('Setup Python & Flask') {
             steps {
                 sh '''
-                    python3 -m venv venv
-                    . venv/bin/activate
-                    pip install flask
+                    echo "[INFO] Setting up virtual environment..."
+                    python3 -m venv ${VENV}
+                    ${VENV}/bin/pip install --upgrade pip
+                    ${VENV}/bin/pip install flask
                 '''
             }
         }
 
-        stage('Run Flask App') {
+        stage('Stop Existing Flask App') {
             steps {
                 sh '''
-                    . venv/bin/activate
-                    nohup python3 app.py > app.log 2>&1 &
+                    echo "[INFO] Stopping previous Flask process if exists..."
+                    if [ -f flask.pid ]; then
+                        kill -9 $(cat flask.pid) || true
+                        rm flask.pid
+                    fi
+                '''
+            }
+        }
+
+        stage('Run Flask App in Background') {
+            steps {
+                sh '''
+                    echo "[INFO] Starting Flask app on 0.0.0.0:${PORT}"
+                    ${VENV}/bin/python app.py > flask.log 2>&1 &
+                    echo $! > flask.pid
+                '''
+            }
+        }
+
+        stage('Verify Internal Access') {
+            steps {
+                sh '''
+                    sleep 3
+                    echo "[INFO] Testing app on localhost:${PORT}"
+                    if curl -s http://localhost:${PORT}; then
+                        echo "[SUCCESS] App responded on port ${PORT}"
+                    else
+                        echo "[ERROR] App did not respond. Dumping log:"
+                        cat flask.log
+                        exit 1
+                    fi
                 '''
             }
         }
