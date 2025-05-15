@@ -2,56 +2,71 @@ pipeline {
     agent any
 
     environment {
-        VENV_DIR = "venv"
-        FLASK_APP = "app.py"
-        FLASK_PORT = "5000"
+        FLASK_APP = 'app.py'
+        FLASK_ENV = 'production'
     }
 
     stages {
         stage('Setup Python Environment') {
             steps {
-                sh '''
-                    if [ ! -d "$VENV_DIR" ]; then
-                        python3 -m venv $VENV_DIR
-                    fi
-                    . $VENV_DIR/bin/activate
-                    pip install --upgrade pip
-                    pip install flask
-                '''
+                script {
+                    // Install Python 3 and pip if not already installed
+                    sh '''
+                        sudo apt update
+                        sudo apt install -y python3 python3-pip
+                    '''
+                    // Install Flask
+                    sh 'pip3 install flask'
+                }
             }
         }
 
         stage('Stop Existing Flask App') {
             steps {
-                sh '''
-                    pid=$(pgrep -f "$FLASK_APP" || true)
-                    if [ ! -z "$pid" ]; then
-                        echo "Stopping existing Flask app with PID: $pid"
-                        kill -9 $pid
-                    else
-                        echo "No existing Flask app process found."
-                    fi
-                '''
+                script {
+                    // Stop any running Flask application on port 5000
+                    sh '''
+                        pid=$(lsof -t -i:5000)
+                        if [ -n "$pid" ]; then
+                            kill -9 $pid
+                        fi
+                    '''
+                }
             }
         }
 
-        stage('Run Flask App') {
+        stage('Run Flask App in Background') {
             steps {
-                sh '''
-                    . $VENV_DIR/bin/activate
-                    nohup python $FLASK_APP > flask_app.log 2>&1 &
-                    echo "Flask app started in background."
-                '''
+                script {
+                    // Run the Flask application in the background
+                    sh '''
+                        nohup python3 $FLASK_APP > flask_app.log 2>&1 &
+                    '''
+                }
+            }
+        }
+
+        stage('Verify Flask App') {
+            steps {
+                script {
+                    // Check if the Flask application is running
+                    sh '''
+                        if ! pgrep -f $FLASK_APP > /dev/null; then
+                            echo "Flask app failed to start"
+                            exit 1
+                        else
+                            echo "Flask app is running"
+                        fi
+                    '''
+                }
             }
         }
     }
 
     post {
-        success {
-            echo "Deployment completed successfully."
-        }
-        failure {
-            echo "Deployment failed."
+        always {
+            // Clean up any background processes if needed
+            sh 'pkill -f $FLASK_APP || true'
         }
     }
 }
