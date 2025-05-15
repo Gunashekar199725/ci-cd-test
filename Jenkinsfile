@@ -12,8 +12,9 @@ pipeline {
                 sh '''
                     echo "[INFO] Setting up virtual environment..."
                     python3 -m venv ${VENV}
-                    ${VENV}/bin/pip install --upgrade pip
-                    ${VENV}/bin/pip install flask
+                    . ${VENV}/bin/activate
+                    pip install --upgrade pip
+                    pip install flask
                 '''
             }
         }
@@ -23,8 +24,11 @@ pipeline {
                 sh '''
                     echo "[INFO] Stopping previous Flask process if exists..."
                     if [ -f flask.pid ]; then
-                        kill -9 $(cat flask.pid) || true
-                        rm flask.pid
+                        PID=$(cat flask.pid)
+                        if kill -0 $PID > /dev/null 2>&1; then
+                            kill -9 $PID || true
+                        fi
+                        rm -f flask.pid
                     fi
                 '''
             }
@@ -33,9 +37,30 @@ pipeline {
         stage('Run Flask App in Background') {
             steps {
                 sh '''
-                    echo "[INFO] Starting Flask app on 0.0.0.0:${PORT}"
-                    ${VENV}/bin/python app.py > flask.log 2>&1 &
+                    echo "[INFO] Starting Flask app on 0.0.0.0:${PORT}..."
+                    . ${VENV}/bin/activate
+                    nohup python3 app.py > flask.log 2>&1 &
                     echo $! > flask.pid
+                    sleep 5
+                '''
+            }
+        }
+
+        stage('Verify Flask Process') {
+            steps {
+                sh '''
+                    if [ -f flask.pid ]; then
+                        PID=$(cat flask.pid)
+                        if ps -p $PID > /dev/null 2>&1; then
+                            echo "[INFO] Flask app running with PID $PID"
+                        else
+                            echo "[ERROR] Flask app process not found"
+                            exit 1
+                        fi
+                    else
+                        echo "[ERROR] flask.pid not found"
+                        exit 1
+                    fi
                 '''
             }
         }
@@ -43,15 +68,8 @@ pipeline {
         stage('Verify Internal Access') {
             steps {
                 sh '''
-                    sleep 3
-                    echo "[INFO] Testing app on localhost:${PORT}"
-                    if curl -s http://localhost:${PORT}; then
-                        echo "[SUCCESS] App responded on port ${PORT}"
-                    else
-                        echo "[ERROR] App did not respond. Dumping log:"
-                        cat flask.log
-                        exit 1
-                    fi
+                    echo "[INFO] Testing app on localhost:${PORT}..."
+                    curl -s http://localhost:${PORT} || (echo "[WARN] App not responding yet" && exit 1)
                 '''
             }
         }
