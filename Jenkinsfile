@@ -11,7 +11,7 @@ pipeline {
             steps {
                 sh '''
                     echo "[INFO] Setting up virtual environment..."
-                    python3 -m venv ${VENV}
+                    sudo python3 -m venv ${VENV}
                     . ${VENV}/bin/activate
                     pip install --upgrade pip
                     pip install flask
