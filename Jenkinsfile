@@ -2,72 +2,58 @@ pipeline {
     agent any
 
     environment {
-        FLASK_APP = 'app.py'
-        VENV_DIR = 'venv'
+        VENV = "venv"
+        PORT = "5000"
     }
 
     stages {
-        stage('Setup Python Environment') {
+        stage('Setup Python & Flask') {
             steps {
-                script {
-                    // Install python3-venv package to create virtualenv
-                    sh '''
-                        sudo apt update
-                        sudo apt install -y python3-venv
-                        python3 -m venv $VENV_DIR
-                        source $VENV_DIR/bin/activate
-                        pip install --upgrade pip
-                        pip install flask
-                    '''
-                }
+                sh '''
+                    echo "[INFO] Setting up virtual environment..."
+                    python3 -m venv ${VENV}
+                    ${VENV}/bin/pip install --upgrade pip
+                    ${VENV}/bin/pip install flask
+                '''
             }
         }
 
         stage('Stop Existing Flask App') {
             steps {
-                script {
-                    sh '''
-                        pid=$(lsof -t -i:5000)
-                        if [ -n "$pid" ]; then
-                            kill -9 $pid
-                        fi
-                    '''
-                }
+                sh '''
+                    echo "[INFO] Stopping previous Flask process if exists..."
+                    if [ -f flask.pid ]; then
+                        kill -9 $(cat flask.pid) || true
+                        rm flask.pid
+                    fi
+                '''
             }
         }
 
         stage('Run Flask App in Background') {
             steps {
-                script {
-                    // Run Flask app using the virtual environment python interpreter
-                    sh '''
-                        source $VENV_DIR/bin/activate
-                        nohup python $FLASK_APP > flask_app.log 2>&1 &
-                    '''
-                }
+                sh '''
+                    echo "[INFO] Starting Flask app on 0.0.0.0:${PORT}"
+                    ${VENV}/bin/python app.py > flask.log 2>&1 &
+                    echo $! > flask.pid
+                '''
             }
         }
 
-        stage('Verify Flask App') {
+        stage('Verify Internal Access') {
             steps {
-                script {
-                    sh '''
-                        if ! pgrep -f $FLASK_APP > /dev/null; then
-                            echo "Flask app failed to start"
-                            exit 1
-                        else
-                            echo "Flask app is running"
-                        fi
-                    '''
-                }
+                sh '''
+                    sleep 3
+                    echo "[INFO] Testing app on localhost:${PORT}"
+                    if curl -s http://localhost:${PORT}; then
+                        echo "[SUCCESS] App responded on port ${PORT}"
+                    else
+                        echo "[ERROR] App did not respond. Dumping log:"
+                        cat flask.log
+                        exit 1
+                    fi
+                '''
             }
-        }
-    }
-
-    post {
-        always {
-            // Optionally clean up Flask app process on job finish
-            sh 'pkill -f $FLASK_APP || true'
         }
     }
 }
