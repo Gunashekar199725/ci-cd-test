@@ -11,6 +11,7 @@ pipeline {
         stage('Set Up Python') {
             steps {
                 sh '''
+                    sudo apt update
                     sudo apt install python3.12-venv
                     python3 -m venv venv
                     . venv/bin/activate
