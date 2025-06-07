@@ -46,7 +46,7 @@ pipeline {
                     docker run -d \\
                         --name ${CONTAINER_NAME} \\
                         --restart always \\
-                        -p 8501:8501 \\
+                        -p 5000:5000 \\
                         ${IMAGE_NAME}
 
                     echo "Container ${CONTAINER_NAME} is now running."
