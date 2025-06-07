@@ -10,7 +10,6 @@ pipeline {
     }
 
     stages {
-
         stage('Prepare Directory') {
             steps {
                 sh '''
@@ -22,35 +21,36 @@ pipeline {
 
         stage('Clone Repository') {
             steps {
-                dir("$APP_DIR") {
-                    git branch: 'main', credentialsId: 'git_key', url: 'https://github.com/Gunashekar199725/ci-cd-test.git'
+                dir("${APP_DIR}") {
+                    git branch: "${GIT_BRANCH}", credentialsId: 'git_key', url: "${GIT_REPO}"
                 }
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                dir("$APP_DIR") {
+                dir("${APP_DIR}") {
                     sh 'docker build -t $IMAGE_NAME .'
                 }
             }
         }
 
-        stage('Reload and Restart systemd Service') {
+        stage('Run the Container') {
             steps {
-                sh '''
-                    echo "Stopping old service (if running)..."
-                    sudo systemctl stop $CONTAINER_NAME || true
+                sh """
+                    echo "Stopping and removing any existing container..."
+                    docker stop ${CONTAINER_NAME} || true
+                    docker rm ${CONTAINER_NAME} || true
 
-                    echo "Reloading systemd daemon..."
-                    sudo systemctl daemon-reload
+                    echo "Starting new container..."
+                    docker run -d \\
+                        --name ${CONTAINER_NAME} \\
+                        --restart always \\
+                        -p 8501:8501 \\
+                        ${IMAGE_NAME}
 
-                    echo "Starting service..."
-                    sudo systemctl start $CONTAINER_NAME
-
-                    echo "Service status:"
-                    sudo systemctl status $CONTAINER_NAME --no-pager
-                '''
+                    echo "Container ${CONTAINER_NAME} is now running."
+                """
             }
         }
     }
