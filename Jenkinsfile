@@ -5,7 +5,7 @@ pipeline {
         IMAGE_NAME = "ci-cd-test"
         CONTAINER_NAME = "ci-cd-test"
         APP_DIR = "ci-cd-test"
-        GIT_REPO = ""
+        GIT_REPO = "https://github.com/Gunashekar199725/ci-cd-test.git"
         GIT_BRANCH = "main"
     }
 
@@ -23,7 +23,7 @@ pipeline {
         stage('Clone Repository') {
             steps {
                 dir("$APP_DIR") {
-                    g
+                    git branch: 'main', credentialsId: 'git_key', url: 'https://github.com/Gunashekar199725/ci-cd-test.git'
                 }
             }
         }
