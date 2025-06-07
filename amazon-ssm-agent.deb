@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Error><Code>PermanentRedirect</Code><Message>The bucket you are attempting to access must be addressed using the specified endpoint. Please send all future requests to this endpoint.</Message><Endpoint>amazon-ssm-region.s3.amazonaws.com</Endpoint><Bucket>amazon-ssm-region</Bucket><RequestId>NP1TDZVG486ZXXKZ</RequestId><HostId>e5XKOkt9UwCY2RDqNp5gVlYIlMBQK8vazWCrsw4Q7sXC5Zcp0WwRo17rMl08ptoCKhWZkA5V+g/fFIr1jqqm0frLi2rJ/Id5</HostId></Error>
